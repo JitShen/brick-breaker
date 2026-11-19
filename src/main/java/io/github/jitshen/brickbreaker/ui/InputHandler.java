@@ -21,6 +21,7 @@ final class InputHandler {
     private boolean launch;
     private boolean pause;
     private boolean restart;
+    private boolean quit;
 
     /**
      * @param node node receiving key and mouse events
@@ -42,8 +43,15 @@ final class InputHandler {
             case SPACE, ENTER -> launch = true;
             case ESCAPE, P -> pause = true;
             case R -> restart = true;
+            case Q -> quit = true;
             default -> { }
         }
+    }
+
+    boolean pollQuit() {
+        boolean pressed = quit;
+        quit = false;
+        return pressed;
     }
 
     /** Input for the next game step. The mouse only moves the paddle when it has moved. */

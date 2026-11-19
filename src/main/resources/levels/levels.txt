@@ -1,1 +1,5 @@
 01-warm-up.txt
+02-stripes.txt
+03-diamond.txt
+04-gates.txt
+05-citadel.txt

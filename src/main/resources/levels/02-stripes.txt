@@ -1,0 +1,6 @@
+; Stripes: alternating one- and two-hit rows.
+2222222222
+1111111111
+2222222222
+1111111111
+2222222222

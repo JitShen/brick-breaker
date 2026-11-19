@@ -1,0 +1,6 @@
+; Gates: unbreakable posts guard the wall; aim through the gaps.
+3333333333
+2222222222
+2222222222
+1111111111
+##..##..##
