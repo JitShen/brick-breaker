@@ -338,6 +338,5 @@ All timers and falling power-ups clear on life lost and level change.
   features, controls table, requirements (JDK 21) and `./gradlew run` / `./gradlew test`, short
   "How it's built" (model vs ui, fixed-step loop, swept collision, level file format), Remembrance,
   licence MIT.
-- [ ] **Step 2: Verify** `./gradlew build` passes; no trademarked names (`grep -ri "breakout\|arkanoid"`
-  returns nothing).
+- [ ] **Step 2: Verify** `./gradlew build` passes; no trademarked game names appear anywhere in the repo.
 - [ ] **Step 3: Commit** `docs: write README`, then `git tag v1.0`.
