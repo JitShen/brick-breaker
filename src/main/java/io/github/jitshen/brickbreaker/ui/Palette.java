@@ -2,6 +2,7 @@ package io.github.jitshen.brickbreaker.ui;
 
 import io.github.jitshen.brickbreaker.model.Brick;
 import io.github.jitshen.brickbreaker.model.BrickType;
+import io.github.jitshen.brickbreaker.model.PowerUpType;
 import javafx.scene.paint.Color;
 
 /** Every colour the game uses, in one place. */
@@ -25,6 +26,15 @@ final class Palette {
             case TWO -> Color.web("#9d6bff");
             case THREE -> Color.web("#f72585");
             case UNBREAKABLE -> Color.web("#5c677d");
+        };
+    }
+
+    static Color powerUp(PowerUpType type) {
+        return switch (type) {
+            case WIDE_PADDLE -> Color.web("#ffd166");
+            case MULTI_BALL -> Color.web("#06d6a0");
+            case SLOW_BALL -> Color.web("#4cc9f0");
+            case EXTRA_LIFE -> Color.web("#ef476f");
         };
     }
 

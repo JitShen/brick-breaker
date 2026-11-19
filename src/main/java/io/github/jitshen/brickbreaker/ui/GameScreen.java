@@ -1,8 +1,10 @@
 package io.github.jitshen.brickbreaker.ui;
 
 import io.github.jitshen.brickbreaker.model.Game;
+import io.github.jitshen.brickbreaker.model.GameEvent;
 import io.github.jitshen.brickbreaker.model.GameState;
 import io.github.jitshen.brickbreaker.model.LevelLoader;
+import io.github.jitshen.brickbreaker.score.HighScoreStore;
 import java.util.random.RandomGenerator;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.layout.Pane;
@@ -11,12 +13,16 @@ import javafx.scene.layout.Pane;
 public final class GameScreen extends Pane {
 
     private final Game game = new Game(LevelLoader.loadAll(), RandomGenerator.getDefault());
+    private final HighScoreStore highScores;
     private final Canvas canvas = new Canvas();
     private final GameView view = new GameView(canvas);
     private final InputHandler input = new InputHandler(this, view::toPlayfieldX);
-    private final GameLoop loop = new GameLoop(this::step, () -> view.render(game));
+    private final GameLoop loop = new GameLoop(this::step, this::render);
+    private int bestScore;
 
-    public GameScreen() {
+    public GameScreen(HighScoreStore highScores) {
+        this.highScores = highScores;
+        this.bestScore = highScores.load();
         getChildren().add(canvas);
         canvas.widthProperty().bind(widthProperty());
         canvas.heightProperty().bind(heightProperty());
@@ -47,7 +53,22 @@ public final class GameScreen extends Pane {
         if (input.pollRestart() && isOver()) {
             game.restart();
         }
-        game.update(dt, input.poll());
+        for (GameEvent event : game.update(dt, input.poll())) {
+            if (event instanceof GameEvent.GameOver || event instanceof GameEvent.GameWon) {
+                recordScore();
+            }
+        }
+    }
+
+    private void recordScore() {
+        if (game.score() > bestScore) {
+            bestScore = game.score();
+            highScores.save(bestScore);
+        }
+    }
+
+    private void render() {
+        view.render(game, bestScore);
     }
 
     private boolean isOver() {

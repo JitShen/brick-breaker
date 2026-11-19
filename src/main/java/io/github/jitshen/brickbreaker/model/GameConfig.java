@@ -29,5 +29,15 @@ public final class GameConfig {
     public static final double BRICK_GAP = 4;
     public static final double BRICK_SIDE_MARGIN = 20;
 
+    /** Chance that a destroyed brick drops a power-up. */
+    public static final double POWER_UP_DROP_CHANCE = 0.15;
+    public static final double POWER_UP_FALL_SPEED = 150;
+    public static final double WIDE_DURATION = 10;
+    public static final double SLOW_DURATION = 8;
+    /** Ball movement speed multiplier while the slow-ball power-up is active. */
+    public static final double SLOW_FACTOR = 0.7;
+    /** Angle between the original ball and each extra multi-ball. */
+    public static final double MULTI_BALL_SPREAD = Math.toRadians(20);
+
     private GameConfig() {}
 }

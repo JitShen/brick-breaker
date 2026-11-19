@@ -5,11 +5,18 @@ import static io.github.jitshen.brickbreaker.model.GameConfig.BALL_RADIUS;
 import static io.github.jitshen.brickbreaker.model.GameConfig.BALL_SPEED_UP;
 import static io.github.jitshen.brickbreaker.model.GameConfig.BALL_START_SPEED;
 import static io.github.jitshen.brickbreaker.model.GameConfig.HEIGHT;
+import static io.github.jitshen.brickbreaker.model.GameConfig.MAX_LIVES;
 import static io.github.jitshen.brickbreaker.model.GameConfig.MIN_VERTICAL_RATIO;
+import static io.github.jitshen.brickbreaker.model.GameConfig.MULTI_BALL_SPREAD;
 import static io.github.jitshen.brickbreaker.model.GameConfig.PADDLE_SPEED;
+import static io.github.jitshen.brickbreaker.model.GameConfig.PADDLE_WIDE_WIDTH;
 import static io.github.jitshen.brickbreaker.model.GameConfig.PADDLE_WIDTH;
 import static io.github.jitshen.brickbreaker.model.GameConfig.PADDLE_Y;
+import static io.github.jitshen.brickbreaker.model.GameConfig.POWER_UP_DROP_CHANCE;
+import static io.github.jitshen.brickbreaker.model.GameConfig.SLOW_DURATION;
+import static io.github.jitshen.brickbreaker.model.GameConfig.SLOW_FACTOR;
 import static io.github.jitshen.brickbreaker.model.GameConfig.START_LIVES;
+import static io.github.jitshen.brickbreaker.model.GameConfig.WIDE_DURATION;
 import static io.github.jitshen.brickbreaker.model.GameConfig.WIDTH;
 
 import java.util.ArrayList;
@@ -42,17 +49,19 @@ public final class Game {
     private record Contact(Collision.Hit hit, Surface surface, Brick brick) {}
 
     private final List<Level> levels;
-    @SuppressWarnings("unused") // used by power-up drops
     private final RandomGenerator random;
     private final Paddle paddle = new Paddle(WIDTH / 2);
     private final List<Ball> balls = new ArrayList<>();
     private final List<Brick> bricks = new ArrayList<>();
+    private final List<PowerUp> powerUps = new ArrayList<>();
 
     private GameState state;
     private GameState stateBeforePause;
     private int lives;
     private int score;
     private int levelIndex;
+    private double wideTimeLeft;
+    private double slowTimeLeft;
 
     public Game(List<Level> levels, RandomGenerator random) {
         if (levels.isEmpty()) {
@@ -109,12 +118,15 @@ public final class Game {
 
     private void play(double dt, InputState input, List<GameEvent> events) {
         movePaddle(dt, input);
+        tickTimers(dt);
+        double ballDt = slowTimeLeft > 0 ? dt * SLOW_FACTOR : dt;
         for (Ball ball : List.copyOf(balls)) {
-            moveBall(ball, dt, events);
+            moveBall(ball, ballDt, events);
             if (ball.position().y() - ball.radius() > HEIGHT) {
                 balls.remove(ball);
             }
         }
+        updatePowerUps(dt, events);
         if (balls.isEmpty()) {
             loseLife(events);
         } else if (bricks.stream().noneMatch(b -> b.type().isBreakable())) {
@@ -196,9 +208,70 @@ public final class Game {
                     bricks.remove(brick);
                     score += brick.type().score();
                     events.add(new GameEvent.BrickDestroyed(brick));
+                    maybeDropPowerUp(brick, events);
                 }
             }
         }
+    }
+
+    private void maybeDropPowerUp(Brick brick, List<GameEvent> events) {
+        if (random.nextDouble() >= POWER_UP_DROP_CHANCE) {
+            return;
+        }
+        PowerUpType[] types = PowerUpType.values();
+        PowerUpType type = types[random.nextInt(types.length)];
+        PowerUp powerUp = new PowerUp(type, new Vec2(brick.bounds().centerX(), brick.bounds().centerY()));
+        powerUps.add(powerUp);
+        events.add(new GameEvent.PowerUpSpawned(powerUp));
+    }
+
+    private void updatePowerUps(double dt, List<GameEvent> events) {
+        for (PowerUp powerUp : List.copyOf(powerUps)) {
+            powerUp.fall(dt);
+            if (powerUp.bounds().intersects(paddle.bounds())) {
+                powerUps.remove(powerUp);
+                apply(powerUp.type());
+                events.add(new GameEvent.PowerUpCollected(powerUp.type()));
+            } else if (powerUp.bounds().minY() > HEIGHT) {
+                powerUps.remove(powerUp);
+            }
+        }
+    }
+
+    private void apply(PowerUpType type) {
+        switch (type) {
+            case WIDE_PADDLE -> {
+                wideTimeLeft = WIDE_DURATION;
+                paddle.setWidth(PADDLE_WIDE_WIDTH);
+            }
+            case MULTI_BALL -> {
+                Ball original = balls.getFirst();
+                for (double angle : new double[] {-MULTI_BALL_SPREAD, MULTI_BALL_SPREAD}) {
+                    balls.add(new Ball(original.position(), original.velocity().rotate(angle)));
+                }
+            }
+            case SLOW_BALL -> slowTimeLeft = SLOW_DURATION;
+            case EXTRA_LIFE -> lives = Math.min(lives + 1, MAX_LIVES);
+        }
+    }
+
+    private void tickTimers(double dt) {
+        slowTimeLeft = Math.max(0, slowTimeLeft - dt);
+        if (wideTimeLeft > 0) {
+            wideTimeLeft -= dt;
+            if (wideTimeLeft <= 0) {
+                wideTimeLeft = 0;
+                paddle.setWidth(PADDLE_WIDTH);
+            }
+        }
+    }
+
+    /** Removes falling power-ups and ends active effects, e.g. after a lost life. */
+    private void clearPowerUps() {
+        powerUps.clear();
+        wideTimeLeft = 0;
+        slowTimeLeft = 0;
+        paddle.setWidth(PADDLE_WIDTH);
     }
 
     /** Keeps the ball from settling into a near-horizontal path that never comes back down. */
@@ -215,6 +288,7 @@ public final class Game {
 
     private void loseLife(List<GameEvent> events) {
         lives--;
+        clearPowerUps();
         events.add(new GameEvent.LifeLost());
         if (lives == 0) {
             state = GameState.GAME_OVER;
@@ -238,7 +312,7 @@ public final class Game {
         levelIndex = index;
         bricks.clear();
         bricks.addAll(levels.get(index).createBricks());
-        paddle.setWidth(PADDLE_WIDTH);
+        clearPowerUps();
         paddle.moveTo(WIDTH / 2);
         resetBall();
     }
@@ -268,6 +342,21 @@ public final class Game {
     /** Bricks still standing. */
     public List<Brick> bricks() {
         return Collections.unmodifiableList(bricks);
+    }
+
+    /** Power-ups currently falling. */
+    public List<PowerUp> powerUps() {
+        return Collections.unmodifiableList(powerUps);
+    }
+
+    /** Seconds left on the wide-paddle power-up, or 0 if it isn't active. */
+    public double wideTimeLeft() {
+        return wideTimeLeft;
+    }
+
+    /** Seconds left on the slow-ball power-up, or 0 if it isn't active. */
+    public double slowTimeLeft() {
+        return slowTimeLeft;
     }
 
     public int lives() {

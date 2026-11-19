@@ -16,6 +16,10 @@ public sealed interface GameEvent {
 
     record BrickDestroyed(Brick brick) implements GameEvent {}
 
+    record PowerUpSpawned(PowerUp powerUp) implements GameEvent {}
+
+    record PowerUpCollected(PowerUpType type) implements GameEvent {}
+
     record LifeLost() implements GameEvent {}
 
     record LevelCleared(int levelIndex) implements GameEvent {}

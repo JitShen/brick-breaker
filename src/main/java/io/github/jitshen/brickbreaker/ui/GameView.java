@@ -6,6 +6,8 @@ import static io.github.jitshen.brickbreaker.model.GameConfig.WIDTH;
 import io.github.jitshen.brickbreaker.model.Ball;
 import io.github.jitshen.brickbreaker.model.Brick;
 import io.github.jitshen.brickbreaker.model.Game;
+import io.github.jitshen.brickbreaker.model.PowerUp;
+import io.github.jitshen.brickbreaker.model.PowerUpType;
 import io.github.jitshen.brickbreaker.model.Rect;
 import javafx.geometry.VPos;
 import javafx.scene.canvas.Canvas;
@@ -23,6 +25,8 @@ final class GameView {
     private static final Font HUD_FONT = Font.font("System", FontWeight.BOLD, 18);
     private static final Font TITLE_FONT = Font.font("System", FontWeight.BOLD, 44);
     private static final Font HINT_FONT = Font.font("System", FontWeight.NORMAL, 18);
+    private static final Font SMALL_FONT = Font.font("System", FontWeight.NORMAL, 14);
+    private static final Font POWER_UP_FONT = Font.font("System", FontWeight.BOLD, 11);
     private static final double HUD_Y = 30;
 
     private final Canvas canvas;
@@ -39,7 +43,7 @@ final class GameView {
         return (canvasX - offsetX) / scale;
     }
 
-    void render(Game game) {
+    void render(Game game, int bestScore) {
         GraphicsContext g = canvas.getGraphicsContext2D();
         fitPlayfield();
 
@@ -54,13 +58,16 @@ final class GameView {
         for (Brick brick : game.bricks()) {
             drawBrick(g, brick);
         }
+        for (PowerUp powerUp : game.powerUps()) {
+            drawPowerUp(g, powerUp);
+        }
         drawPaddle(g, game);
         g.setFill(Palette.BALL);
         for (Ball ball : game.balls()) {
             double r = ball.radius();
             g.fillOval(ball.position().x() - r, ball.position().y() - r, 2 * r, 2 * r);
         }
-        drawHud(g, game);
+        drawHud(g, game, bestScore);
         drawMessage(g, game);
     }
 
@@ -78,13 +85,33 @@ final class GameView {
         g.fillRoundRect(b.x() + 2, b.y() + 2, b.width() - 4, 4, 4, 4);
     }
 
+    private static void drawPowerUp(GraphicsContext g, PowerUp powerUp) {
+        Rect b = powerUp.bounds();
+        g.setFill(Palette.powerUp(powerUp.type()));
+        g.fillRoundRect(b.x(), b.y(), b.width(), b.height(), b.height(), b.height());
+        g.setFill(Palette.BACKGROUND);
+        g.setFont(POWER_UP_FONT);
+        g.setTextAlign(TextAlignment.CENTER);
+        g.setTextBaseline(VPos.CENTER);
+        g.fillText(label(powerUp.type()), b.centerX(), b.centerY());
+    }
+
+    private static String label(PowerUpType type) {
+        return switch (type) {
+            case WIDE_PADDLE -> "W";
+            case MULTI_BALL -> "M";
+            case SLOW_BALL -> "S";
+            case EXTRA_LIFE -> "+";
+        };
+    }
+
     private static void drawPaddle(GraphicsContext g, Game game) {
         Rect p = game.paddle().bounds();
         g.setFill(Palette.PADDLE);
         g.fillRoundRect(p.x(), p.y(), p.width(), p.height(), p.height(), p.height());
     }
 
-    private static void drawHud(GraphicsContext g, Game game) {
+    private static void drawHud(GraphicsContext g, Game game, int bestScore) {
         g.setFont(HUD_FONT);
         g.setTextBaseline(VPos.CENTER);
         g.setFill(Palette.TEXT);
@@ -95,6 +122,24 @@ final class GameView {
         g.fillText("Level " + (game.levelIndex() + 1) + " / " + game.levelCount(), WIDTH / 2, HUD_Y);
         g.setTextAlign(TextAlignment.RIGHT);
         g.fillText("Lives " + game.lives(), WIDTH - 20, HUD_Y);
+
+        g.setFont(SMALL_FONT);
+        g.setFill(Palette.TEXT_DIM);
+        g.setTextAlign(TextAlignment.LEFT);
+        g.fillText("Best " + Math.max(bestScore, game.score()), 20, HEIGHT - 14);
+        g.setTextAlign(TextAlignment.RIGHT);
+        g.fillText(activeEffects(game), WIDTH - 20, HEIGHT - 14);
+    }
+
+    private static String activeEffects(Game game) {
+        StringBuilder text = new StringBuilder();
+        if (game.wideTimeLeft() > 0) {
+            text.append("Wide ").append((int) Math.ceil(game.wideTimeLeft())).append("s   ");
+        }
+        if (game.slowTimeLeft() > 0) {
+            text.append("Slow ").append((int) Math.ceil(game.slowTimeLeft())).append('s');
+        }
+        return text.toString().strip();
     }
 
     private static void drawMessage(GraphicsContext g, Game game) {
