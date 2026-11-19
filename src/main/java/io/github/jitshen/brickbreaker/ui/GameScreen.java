@@ -18,7 +18,7 @@ public final class GameScreen extends Pane {
     private final Runnable onQuit;
     private final Canvas canvas = new Canvas();
     private final GameView view = new GameView(canvas);
-    private final InputHandler input = new InputHandler(this, view::toPlayfieldX);
+    private final InputHandler input = new InputHandler();
     private final GameLoop loop = new GameLoop(this::step, this::render);
     private int bestScore;
     private boolean newBest;
@@ -35,6 +35,7 @@ public final class GameScreen extends Pane {
         canvas.widthProperty().bind(widthProperty());
         canvas.heightProperty().bind(heightProperty());
         setFocusTraversable(true);
+        input.attach(this, view::toPlayfieldX);
     }
 
     public void start() {
@@ -54,15 +55,23 @@ public final class GameScreen extends Pane {
         }
     }
 
+    /** Keeps the current score if it is a new best, e.g. when the player leaves mid-game. */
+    public void saveScore() {
+        if (highScores.saveIfHigher(game.score())) {
+            bestScore = game.score();
+            newBest = true;
+        }
+    }
+
     private void step(double dt) {
         boolean pausePressed = input.pollPause();
+        boolean backPressed = input.pollBack();
         boolean quitPressed = input.pollQuit();
-        if (isOver() && pausePressed || game.state() == GameState.PAUSED && quitPressed) {
-            stop();
-            onQuit.run();
+        if (isOver() && backPressed || game.state() == GameState.PAUSED && quitPressed) {
+            leave();
             return;
         }
-        if (pausePressed) {
+        if (pausePressed && !isOver()) {
             game.togglePause();
         }
         if (input.pollRestart() && isOver()) {
@@ -73,19 +82,17 @@ public final class GameScreen extends Pane {
         List<GameEvent> events = game.update(dt, input.poll());
         for (GameEvent event : events) {
             if (event instanceof GameEvent.GameOver || event instanceof GameEvent.GameWon) {
-                recordScore();
+                saveScore();
             }
         }
         view.react(events);
         view.updateEffects(dt);
     }
 
-    private void recordScore() {
-        if (game.score() > bestScore) {
-            bestScore = game.score();
-            newBest = true;
-            highScores.save(bestScore);
-        }
+    private void leave() {
+        stop();
+        saveScore();
+        onQuit.run();
     }
 
     private void render() {

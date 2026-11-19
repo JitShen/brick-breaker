@@ -141,6 +141,47 @@ class PowerUpTest {
         assertThat(game.balls()).hasSize(1);
     }
 
+    /** Runs until the falling capsule is just above the paddle, so the next step catches it. */
+    private static void bringCapsuleToPaddle(Game game) {
+        PowerUp capsule = game.powerUps().getFirst();
+        while (capsule.bounds().maxY() < GameConfig.PADDLE_Y - 5) {
+            game.update(0.01, InputState.NONE);
+        }
+    }
+
+    @Test
+    void multiBallClonesTheHighestBall() {
+        Game game = game(PowerUpType.MULTI_BALL);
+        breakBrick(game);
+        waitForCatch(game);
+        breakBrick(game);
+        bringCapsuleToPaddle(game);
+        Ball falling = ball(game);
+        falling.setPosition(new Vec2(400, 575));
+        falling.setVelocity(new Vec2(0, 100));
+
+        game.update(0.1, InputState.NONE);
+
+        long high = game.balls().stream().filter(b -> b.position().y() < 400).count();
+        assertThat(game.balls()).hasSize(5);
+        assertThat(high).isEqualTo(4);
+    }
+
+    @Test
+    void multiBallClonesNeverStartNearlyHorizontal() {
+        Game game = game(PowerUpType.MULTI_BALL);
+        breakBrick(game);
+        bringCapsuleToPaddle(game);
+        ball(game).setPosition(new Vec2(400, 300));
+        ball(game).setVelocity(new Vec2(300, -100));
+
+        game.update(0.1, InputState.NONE);
+
+        assertThat(game.balls()).hasSize(3).allSatisfy(b ->
+                assertThat(Math.abs(b.velocity().y()) / b.speed())
+                        .isGreaterThanOrEqualTo(GameConfig.MIN_VERTICAL_RATIO - 1e-9));
+    }
+
     @Test
     void extraLifeCapsAtFive() {
         Game game = game(PowerUpType.EXTRA_LIFE);

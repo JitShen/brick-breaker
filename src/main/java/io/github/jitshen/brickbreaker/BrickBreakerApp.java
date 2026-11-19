@@ -45,6 +45,14 @@ public final class BrickBreakerApp extends Application {
         gameScreen.start();
     }
 
+    /** Called when the window closes: keep the score of a game left mid-way. */
+    @Override
+    public void stop() {
+        if (gameScreen != null) {
+            gameScreen.saveScore();
+        }
+    }
+
     public static void main(String[] args) {
         launch(args);
     }

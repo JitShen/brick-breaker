@@ -11,8 +11,9 @@ import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseEvent;
 
 /**
- * Turns keyboard and mouse events into {@link InputState}s. Presses (launch, pause, restart) are
- * remembered until the next poll so a quick tap is never missed between game steps.
+ * Turns keyboard and mouse events into {@link InputState}s. Presses (launch, pause, back,
+ * restart, quit) are remembered until the next poll so a quick tap is never missed between game
+ * steps. A held key's auto-repeat does not count as a new press.
  */
 final class InputHandler {
 
@@ -20,16 +21,18 @@ final class InputHandler {
     private OptionalDouble pointerX = OptionalDouble.empty();
     private boolean launch;
     private boolean pause;
+    private boolean back;
     private boolean restart;
     private boolean quit;
 
     /**
-     * @param node node receiving key and mouse events
+     * Listens for key and mouse events on {@code node}.
+     *
      * @param toPlayfieldX converts a mouse x on the node to a playfield x
      */
-    InputHandler(Node node, DoubleUnaryOperator toPlayfieldX) {
-        node.addEventHandler(KeyEvent.KEY_PRESSED, e -> onKeyPressed(e.getCode()));
-        node.addEventHandler(KeyEvent.KEY_RELEASED, e -> held.remove(e.getCode()));
+    void attach(Node node, DoubleUnaryOperator toPlayfieldX) {
+        node.addEventHandler(KeyEvent.KEY_PRESSED, e -> keyPressed(e.getCode()));
+        node.addEventHandler(KeyEvent.KEY_RELEASED, e -> keyReleased(e.getCode()));
         node.addEventHandler(MouseEvent.MOUSE_MOVED,
                 e -> pointerX = OptionalDouble.of(toPlayfieldX.applyAsDouble(e.getX())));
         node.addEventHandler(MouseEvent.MOUSE_DRAGGED,
@@ -37,21 +40,25 @@ final class InputHandler {
         node.addEventHandler(MouseEvent.MOUSE_PRESSED, e -> launch = true);
     }
 
-    private void onKeyPressed(KeyCode code) {
-        held.add(code);
+    void keyPressed(KeyCode code) {
+        if (!held.add(code)) {
+            return; // auto-repeat of a key that is already down
+        }
         switch (code) {
-            case SPACE, ENTER -> launch = true;
-            case ESCAPE, P -> pause = true;
+            case SPACE -> launch = true;
+            case ESCAPE -> {
+                pause = true;
+                back = true;
+            }
+            case P -> pause = true;
             case R -> restart = true;
             case Q -> quit = true;
             default -> { }
         }
     }
 
-    boolean pollQuit() {
-        boolean pressed = quit;
-        quit = false;
-        return pressed;
+    void keyReleased(KeyCode code) {
+        held.remove(code);
     }
 
     /** Input for the next game step. The mouse only moves the paddle when it has moved. */
@@ -64,15 +71,30 @@ final class InputHandler {
         return state;
     }
 
+    /** Esc or P: pause or resume. */
     boolean pollPause() {
         boolean pressed = pause;
         pause = false;
         return pressed;
     }
 
+    /** Esc only: leave the end screen for the title. */
+    boolean pollBack() {
+        boolean pressed = back;
+        back = false;
+        return pressed;
+    }
+
     boolean pollRestart() {
         boolean pressed = restart;
         restart = false;
+        return pressed;
+    }
+
+    /** Q: quit to the title from the pause menu. */
+    boolean pollQuit() {
+        boolean pressed = quit;
+        quit = false;
         return pressed;
     }
 

@@ -43,11 +43,20 @@ public final class HighScoreStore {
         }
     }
 
+    /** Saves {@code score} only if it beats the stored best; returns whether it did. */
+    public boolean saveIfHigher(int score) {
+        if (score <= load()) {
+            return false;
+        }
+        save(score);
+        return true;
+    }
+
     public void save(int score) {
         Properties properties = new Properties();
         properties.setProperty(KEY, Integer.toString(score));
         try {
-            Files.createDirectories(file.getParent());
+            Files.createDirectories(file.toAbsolutePath().getParent());
             try (Writer writer = Files.newBufferedWriter(file)) {
                 properties.store(writer, "Brick Breaker high score");
             }

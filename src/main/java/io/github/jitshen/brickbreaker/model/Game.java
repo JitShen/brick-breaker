@@ -21,6 +21,7 @@ import static io.github.jitshen.brickbreaker.model.GameConfig.WIDTH;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.random.RandomGenerator;
@@ -99,7 +100,9 @@ public final class Game {
                     loadLevel(levelIndex + 1);
                 }
             }
-            case PAUSED, GAME_OVER, WON -> { }
+            case PAUSED, GAME_OVER, WON -> {
+                // Nothing moves until the player resumes or restarts.
+            }
         }
         return events;
     }
@@ -254,9 +257,13 @@ public final class Game {
                 if (balls.isEmpty()) {
                     return; // the last ball fell out this step; the life is lost anyway
                 }
-                Ball original = balls.getFirst();
+                // Copy the ball furthest from the bottom, so the copies aren't already lost.
+                Ball original = balls.stream()
+                        .min(Comparator.comparingDouble(b -> b.position().y()))
+                        .orElseThrow();
                 for (double angle : new double[] {-MULTI_BALL_SPREAD, MULTI_BALL_SPREAD}) {
-                    balls.add(new Ball(original.position(), original.velocity().rotate(angle)));
+                    Vec2 velocity = steepen(original.velocity().rotate(angle));
+                    balls.add(new Ball(original.position(), velocity));
                 }
             }
             case SLOW_BALL -> slowTimeLeft = SLOW_DURATION;

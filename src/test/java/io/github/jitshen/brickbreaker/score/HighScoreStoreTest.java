@@ -29,6 +29,31 @@ class HighScoreStoreTest {
     }
 
     @Test
+    void saveIfHigherKeepsTheBest() {
+        HighScoreStore store = new HighScoreStore(dir.resolve("highscore.properties"));
+        store.save(100);
+
+        assertThat(store.saveIfHigher(50)).isFalse();
+        assertThat(store.load()).isEqualTo(100);
+        assertThat(store.saveIfHigher(150)).isTrue();
+        assertThat(store.load()).isEqualTo(150);
+    }
+
+    @Test
+    void bareFileNameSavesInWorkingDirectory() throws IOException {
+        Path bare = Path.of("brick-breaker-test-" + System.nanoTime() + ".properties");
+        try {
+            HighScoreStore store = new HighScoreStore(bare);
+
+            store.save(42);
+
+            assertThat(store.load()).isEqualTo(42);
+        } finally {
+            Files.deleteIfExists(bare);
+        }
+    }
+
+    @Test
     void corruptFileIsZero() throws IOException {
         Path file = dir.resolve("highscore.properties");
         Files.writeString(file, "highScore=banana");
