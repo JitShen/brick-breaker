@@ -221,6 +221,29 @@ class GameTest {
     }
 
     @Test
+    void ballTouchingPaddleTopBouncesWhenMouseJumpsPaddleUnderIt() {
+        Game game = launched("1");
+        Ball ball = place(game, 500, 556, 0, 300);
+
+        List<GameEvent> events = game.update(0.01, new InputState(false, false, OptionalDouble.of(480), false));
+
+        assertThat(events).hasAtLeastOneElementOfType(GameEvent.PaddleHit.class);
+        assertThat(ball.velocity().y()).isNegative();
+        assertThat(game.lives()).isEqualTo(GameConfig.START_LIVES);
+    }
+
+    @Test
+    void ballTouchingPaddleTopBouncesWhenPaddleSlidesIntoIt() {
+        Game game = launched("1");
+        Ball ball = place(game, 455, 553, 0, 300);
+
+        List<GameEvent> events = game.update(0.02, RIGHT);
+
+        assertThat(events).hasAtLeastOneElementOfType(GameEvent.PaddleHit.class);
+        assertThat(ball.velocity().y()).isNegative();
+    }
+
+    @Test
     void ballNeverTravelsNearlyHorizontally() {
         Game game = launched("1");
         Ball ball = place(game, GameConfig.WIDTH - 20, 300, 400, -10);

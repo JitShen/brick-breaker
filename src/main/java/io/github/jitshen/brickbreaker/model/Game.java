@@ -144,6 +144,12 @@ public final class Game {
 
     /** Moves a ball for one step, bouncing off everything it touches along the way. */
     private void moveBall(Ball ball, double dt, List<GameEvent> events) {
+        // The paddle can jump (mouse) or slide under a ball that is already touching its top.
+        // A swept test can't see a contact that starts overlapped, so catch that case here.
+        if (canHitPaddle(ball) && paddle.bounds().expand(ball.radius()).contains(ball.position())) {
+            Contact touching = new Contact(new Collision.Hit(0, new Vec2(0, -1)), Surface.PADDLE, null);
+            bounce(ball, touching, events);
+        }
         double remaining = 1.0;
         for (int i = 0; i < MAX_CONTACTS_PER_STEP && remaining > 0; i++) {
             Vec2 delta = ball.velocity().scale(dt * remaining);
@@ -245,6 +251,9 @@ public final class Game {
                 paddle.setWidth(PADDLE_WIDE_WIDTH);
             }
             case MULTI_BALL -> {
+                if (balls.isEmpty()) {
+                    return; // the last ball fell out this step; the life is lost anyway
+                }
                 Ball original = balls.getFirst();
                 for (double angle : new double[] {-MULTI_BALL_SPREAD, MULTI_BALL_SPREAD}) {
                     balls.add(new Ball(original.position(), original.velocity().rotate(angle)));

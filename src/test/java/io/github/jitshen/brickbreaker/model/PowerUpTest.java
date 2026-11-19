@@ -125,6 +125,23 @@ class PowerUpTest {
     }
 
     @Test
+    void catchingMultiBallAsLastBallFallsOutLosesLifeWithoutCrashing() {
+        Game game = game(PowerUpType.MULTI_BALL);
+        breakBrick(game);
+        PowerUp capsule = game.powerUps().getFirst();
+        while (capsule.bounds().maxY() < GameConfig.PADDLE_Y - 5) {
+            game.update(0.01, InputState.NONE);
+        }
+        ball(game).setPosition(new Vec2(400, GameConfig.HEIGHT + 5));
+        ball(game).setVelocity(new Vec2(0, 400));
+
+        game.update(0.1, InputState.NONE);
+
+        assertThat(game.lives()).isEqualTo(GameConfig.START_LIVES - 1);
+        assertThat(game.balls()).hasSize(1);
+    }
+
+    @Test
     void extraLifeCapsAtFive() {
         Game game = game(PowerUpType.EXTRA_LIFE);
 

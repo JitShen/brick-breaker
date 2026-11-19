@@ -37,6 +37,14 @@ class HighScoreStoreTest {
     }
 
     @Test
+    void malformedEscapeIsZero() throws IOException {
+        Path file = dir.resolve("highscore.properties");
+        Files.writeString(file, "highScore=\\u12G4");
+
+        assertThat(new HighScoreStore(file).load()).isZero();
+    }
+
+    @Test
     void saveToUnwritablePathDoesNotThrow() throws IOException {
         Path notADirectory = Files.writeString(dir.resolve("file"), "x");
         HighScoreStore store = new HighScoreStore(notADirectory.resolve("highscore.properties"));

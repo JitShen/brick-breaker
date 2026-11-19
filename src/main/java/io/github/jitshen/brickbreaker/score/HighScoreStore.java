@@ -37,7 +37,7 @@ public final class HighScoreStore {
         try (Reader reader = Files.newBufferedReader(file)) {
             properties.load(reader);
             return Math.max(0, Integer.parseInt(properties.getProperty(KEY, "0").strip()));
-        } catch (IOException | NumberFormatException e) {
+        } catch (IOException | IllegalArgumentException e) { // covers bad numbers and bad unicode escapes
             LOG.log(Level.WARNING, "Ignoring unreadable high score file " + file, e);
             return 0;
         }

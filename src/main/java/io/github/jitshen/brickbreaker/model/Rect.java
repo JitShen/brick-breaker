@@ -32,6 +32,11 @@ public record Rect(double x, double y, double width, double height) {
         return new Rect(x - amount, y - amount, width + 2 * amount, height + 2 * amount);
     }
 
+    /** True if the point is strictly inside this rectangle. */
+    public boolean contains(Vec2 point) {
+        return point.x() > minX() && point.x() < maxX() && point.y() > minY() && point.y() < maxY();
+    }
+
     public boolean intersects(Rect other) {
         return minX() < other.maxX()
                 && other.minX() < maxX()
